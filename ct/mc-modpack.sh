@@ -26,7 +26,7 @@ BRANCH="${BRANCH:-main}"
 INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-no}"
 PASSWORD="${PASSWORD:-}"               # root password for the container (optional)
 
-OSTEMPLATE_NAME="debian-12-standard_12.7-1_amd64.tar.zst"
+TEMPLATE_PATTERN="${TEMPLATE_PATTERN:-debian-12-standard}"  # pick newest match
 
 say() { echo -e "\e[36m[proxmox]\e[0m $*"; }
 die() { echo -e "\e[31m[error]\e[0m $*" >&2; exit 1; }
@@ -39,12 +39,22 @@ if [[ -z "$CTID" ]]; then
 fi
 say "Using container id: $CTID"
 
-# ---- ensure the Debian template is present --------------------------------
-if ! pveam list "$TEMPLATE_STORAGE" | grep -q "$OSTEMPLATE_NAME"; then
-  say "Downloading Debian 12 template..."
-  pveam update >/dev/null || true
+# ---- ensure a Debian template is present ----------------------------------
+# Template versions roll over in the catalogue, so never hardcode a version:
+# reuse an already-downloaded one, else pick the newest matching name.
+OSTEMPLATE_NAME="$(pveam list "$TEMPLATE_STORAGE" 2>/dev/null \
+  | awk -v p="$TEMPLATE_PATTERN" '$1 ~ p {print $1}' \
+  | sed 's#.*/##' | sort -V | tail -n1)"
+
+if [[ -z "$OSTEMPLATE_NAME" ]]; then
+  say "Downloading Debian template ($TEMPLATE_PATTERN, newest available)..."
+  pveam update >/dev/null 2>&1 || true
+  OSTEMPLATE_NAME="$(pveam available --section system 2>/dev/null \
+    | awk -v p="$TEMPLATE_PATTERN" '$2 ~ p {print $2}' | sort -V | tail -n1)"
+  [[ -n "$OSTEMPLATE_NAME" ]] || die "No '$TEMPLATE_PATTERN' template in the catalogue. Run: pveam available --section system"
   pveam download "$TEMPLATE_STORAGE" "$OSTEMPLATE_NAME"
 fi
+say "Using template: $OSTEMPLATE_NAME"
 TEMPLATE_REF="${TEMPLATE_STORAGE}:vztmpl/${OSTEMPLATE_NAME}"
 
 # ---- create the container -------------------------------------------------
@@ -63,11 +73,20 @@ pct create "$CTID" "$TEMPLATE_REF" \
 
 say "Starting container..."
 pct start "$CTID"
-sleep 8   # give the network a moment to come up via DHCP
+
+# Wait for the container to get an IP via DHCP instead of a fixed sleep.
+say "Waiting for container network..."
+IP=""
+for _ in $(seq 1 30); do
+  IP="$(pct exec "$CTID" -- hostname -I 2>/dev/null | awk '{print $1}')"
+  [[ -n "$IP" ]] && break
+  sleep 2
+done
+[[ -n "$IP" ]] || die "Container got no IP via DHCP. Check the bridge ($BRIDGE)."
 
 # ---- run the installer inside the container -------------------------------
 say "Installing panel inside the container (this takes a few minutes)..."
-pct exec "$CTID" -- bash -c "apt-get update -qq && apt-get install -y -qq curl >/dev/null"
+pct exec "$CTID" -- bash -c "apt-get update -qq && apt-get install -y -qq curl wget >/dev/null"
 pct exec "$CTID" -- bash -c \
   "REPO_URL='$REPO_URL' BRANCH='$BRANCH' PANEL_PORT='$PANEL_PORT' INSTALL_TAILSCALE='$INSTALL_TAILSCALE' \
    bash -c \"\$(wget -qLO - $REPO_URL/raw/$BRANCH/install/mc-modpack-install.sh)\""
