@@ -25,15 +25,22 @@ apt-get update -qq
 apt-get install -y -qq curl wget git ca-certificates gnupg python3 python3-venv \
   python3-pip tar >/dev/null
 
-say "Installing Temurin JDK 21 (Adoptium)..."
+say "Installing Temurin JDKs (Adoptium)..."
 mkdir -p /etc/apt/keyrings
 wget -qO- https://packages.adoptium.net/artifactory/api/gpg/key/public \
   | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
 echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo "$VERSION_CODENAME") main" \
   > /etc/apt/sources.list.d/adoptium.list
 apt-get update -qq
-apt-get install -y -qq temurin-21-jdk >/dev/null
-java -version
+# Install several JDKs so the panel can pick the right one per modpack:
+# Java 17 (MC 1.18-1.20.4), 21 (1.20.5-1.21.x) and 25 (newest). Older packs
+# that need Java 8 can be added later with: apt-get install temurin-8-jdk
+JDKS="${JDKS:-temurin-17-jdk temurin-21-jdk temurin-25-jdk}"
+for pkg in $JDKS; do
+  say "  $pkg"
+  apt-get install -y -qq "$pkg" >/dev/null || say "  (skipped $pkg — not available)"
+done
+java -version 2>&1 | head -1 || true
 
 say "Fetching panel from ${REPO_URL} (${BRANCH})..."
 rm -rf "$APP_DIR"

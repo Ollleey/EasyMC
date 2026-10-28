@@ -19,10 +19,11 @@ import threading
 import time
 from pathlib import Path
 
-from . import config, loaders, rcon
+from . import config, jvm, loaders, rcon
 
 _CONSOLE_LINES = 500
 _JOIN_LEAVE = re.compile(r"\]:\s+(\w{1,16}) (joined|left) the game")
+_CLASS_VER = re.compile(r"class file version (\d+)")
 
 
 class ServerManager:
@@ -37,6 +38,7 @@ class ServerManager:
         self._settings: config.Settings | None = None
         self.on_event = None       # callable(event_type: str, message: str)
         self._cpu_prev: tuple[int, int] | None = None   # (proc_jiffies, total_jiffies)
+        self._java_override: int | None = None   # Java major forced after a version error
 
     # -- introspection ------------------------------------------------------
     @property
@@ -67,7 +69,25 @@ class ServerManager:
             cpu = self._cpu_percent(pid)
         else:
             self._cpu_prev = None
-        return {"rss_mb": rss_mb, "uptime_s": uptime, "cpu_pct": cpu}
+        return {"rss_mb": rss_mb, "uptime_s": uptime, "cpu_pct": cpu,
+                "container_mb": self._container_mb()}
+
+    @staticmethod
+    def _container_mb() -> int:
+        """Total RAM available to this container (cgroup v2 limit, else host)."""
+        try:
+            txt = open("/sys/fs/cgroup/memory.max").read().strip()
+            if txt.isdigit():
+                return int(txt) // (1024 * 1024)
+        except OSError:
+            pass
+        try:
+            for line in open("/proc/meminfo"):
+                if line.startswith("MemTotal:"):
+                    return int(line.split()[1]) // 1024
+        except OSError:
+            pass
+        return 0
 
     def _cpu_percent(self, pid: int) -> int:
         """CPU use of the process as a percentage of the whole machine."""
@@ -104,11 +124,28 @@ class ServerManager:
             self._configure_rcon(settings)
 
         self._settings = settings
+
+        # Pick the Java runtime for this pack's Minecraft version. If a launch
+        # already reported a specific requirement, that override wins.
+        desired = self._java_override or jvm.required_for_mc(settings.minecraft_version)
+        java_bin, exact = jvm.pick(desired)
+        if not exact:
+            self._append(
+                f"[panel] This pack needs Java {desired}, which is not installed. "
+                f"Install it with: apt-get install -y temurin-{desired}-jdk"
+            )
+            # Don't loop forever when we know the right JDK is simply missing.
+            if self._java_override is not None:
+                self._status = "stopped"
+                self._want_running = False
+                self._emit("stop", f"⏹️ Stopped — install Java {desired} to run this pack")
+                return
+
         cmd = loaders.build_start_command(
             settings.installed_loader, settings.memory_mb,
-            settings.extra_jvm_args, server_dir,
+            settings.extra_jvm_args, server_dir, java_bin,
         )
-        self._append(f"[panel] Starting: {' '.join(cmd)}")
+        self._append(f"[panel] Starting (Java via {java_bin}): {' '.join(cmd)}")
         self._status = "starting"
         self._want_running = True
         self._started_at = time.time()
@@ -187,6 +224,12 @@ class ServerManager:
                     self._emit("join", f"➡️ {who} joined")
                 else:
                     self._emit("leave", f"⬅️ {who} left")
+            cv = _CLASS_VER.search(line)
+            if cv:
+                need = jvm.java_major_from_class_version(int(cv.group(1)))
+                if need != self._java_override:
+                    self._java_override = need
+                    self._append(f"[panel] Pack requires Java {need}; retrying with it.")
         code = self._proc.wait()
         if self._want_running:
             self._status = "crashed"

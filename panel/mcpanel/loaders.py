@@ -145,9 +145,14 @@ def _find_unix_args(server_dir: Path) -> Path | None:
 
 
 def build_start_command(
-    loader: str, memory_mb: int, extra_jvm_args: str, server_dir: Path
+    loader: str, memory_mb: int, extra_jvm_args: str, server_dir: Path,
+    java_bin: str = "java",
 ) -> list[str]:
-    """Return the full java argv used to launch the server."""
+    """Return the full java argv used to launch the server.
+
+    ``java_bin`` is the path to the Java runtime chosen for the pack's
+    Minecraft version (see ``jvm.py``).
+    """
     loader = (loader or "vanilla").lower()
     xmx = f"-Xmx{memory_mb}M"
     xms = f"-Xms{memory_mb}M"
@@ -157,14 +162,14 @@ def build_start_command(
         args_file = _find_unix_args(server_dir)
         if args_file is not None:
             rel = args_file.relative_to(server_dir)
-            return ["java", xmx, xms, *extra, f"@{rel}", "nogui"]
+            return [java_bin, xmx, xms, *extra, f"@{rel}", "nogui"]
         # Fall through to a plain run.sh style jar if present.
         run_sh = server_dir / "run.sh"
         if run_sh.exists():
             return ["bash", "run.sh", "nogui"]
 
     # Fabric / Quilt / Vanilla all boot from server.jar.
-    return ["java", xmx, xms, *extra, "-jar", "server.jar", "nogui"]
+    return [java_bin, xmx, xms, *extra, "-jar", "server.jar", "nogui"]
 
 
 _LOADER_FROM_DEP = {

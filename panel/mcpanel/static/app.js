@@ -222,8 +222,9 @@ async function refreshStats() {
     if (!r.ok) return;
     const d = await r.json();
     const run = d.status === "running";
-    document.getElementById("tileRam").textContent =
-      run ? `${d.rss_mb} / ${d.max_mb} MB` : "—";
+    const ramEl = document.getElementById("tileRam");
+    ramEl.textContent = run ? `${d.rss_mb} / ${d.container_mb} MB` : "—";
+    ramEl.title = run ? `Server heap: ${d.max_mb} MB · process: ${d.rss_mb} MB · container: ${d.container_mb} MB` : "";
     document.getElementById("tileCpu").textContent = run ? `${d.cpu_pct}%` : "—";
     document.getElementById("tileUptime").textContent =
       run ? fmtUptime(d.uptime_s) : "—";
