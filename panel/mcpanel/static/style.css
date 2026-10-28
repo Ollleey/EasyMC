@@ -29,6 +29,18 @@ header h1 { font-size: 18px; margin: 0; flex: 0 0 auto; }
 .logout { margin-left: auto; color: var(--muted); text-decoration: none; font-size: 14px; }
 .logout:hover { color: var(--text); }
 
+.navtabs { display: flex; gap: 6px; margin-left: 8px; }
+.navtab { background: transparent; border: 1px solid var(--border); padding: 6px 12px; font-size: 13px; }
+.navtab.active { background: var(--card2); border-color: var(--accent); color: var(--accent); }
+.navtab .badge { color: var(--accent); font-size: 10px; vertical-align: middle; }
+.view-hidden { display: none; }
+.danger-zone { border-color: var(--danger); }
+.dz-row { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.dz-row:last-child { border-bottom: none; }
+.dz-row > div { flex: 1; }
+.dz-row .hint { margin: 2px 0 0; }
+.dz-row button { flex: 0 0 auto; }
+
 .status-pill {
   font-size: 13px; padding: 3px 12px; border-radius: 999px;
   background: var(--card2); color: var(--muted); border: 1px solid var(--border);
@@ -69,6 +81,8 @@ button {
   transition: background .15s, border-color .15s;
 }
 button:hover { border-color: var(--muted); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--border); }
 button.primary { background: var(--accent2); border-color: var(--accent2); color: #07130b; font-weight: 600; }
 button.primary:hover { background: var(--accent); }
 button.danger { color: var(--danger); border-color: var(--danger); }

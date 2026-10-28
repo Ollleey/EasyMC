@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import backups, config, files, modpacks, notify, players, playtime, scheduler
+from . import backups, config, files, modpacks, notify, players, playtime, scheduler, updater
 from .tunnel import tunnel
 from .server_manager import manager, read_properties, write_properties, set_property
 
@@ -859,6 +859,56 @@ def service_worker():
     return FileResponse(
         str(BASE / "static" / "sw.js"), media_type="application/javascript"
     )
+
+
+# ==========================================================================
+# Maintenance: world reset, modpack removal, self-update
+# ==========================================================================
+@app.post("/api/world/reset")
+def api_world_reset(request: Request):
+    _require(request)
+    import shutil
+    try:
+        if manager.is_running():
+            manager.stop()
+        backups.create_backup(label="pre-world-reset")
+        for w in ("world", "world_nether", "world_the_end"):
+            shutil.rmtree(config.SERVER_DIR / w, ignore_errors=True)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return {"ok": True, "note": "World deleted (backup made). A fresh one generates on Start."}
+
+
+@app.post("/api/modpack/reset")
+def api_modpack_reset(request: Request):
+    _require(request)
+    try:
+        if manager.is_running():
+            manager.stop()
+        backups.create_backup(label="pre-modpack-reset")
+        modpacks._clean_server_dir(config.SERVER_DIR)   # keeps worlds + properties
+        _settings.installed_pack_name = ""
+        _settings.installed_loader = ""
+        _settings.minecraft_version = ""
+        _settings.loader_version = ""
+        config.save(_settings)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return {"ok": True, "note": "Modpack removed, world kept. Install a new pack."}
+
+
+@app.get("/api/update/check")
+def api_update_check(request: Request):
+    _require(request)
+    return updater.check()
+
+
+@app.post("/api/update/apply")
+def api_update_apply(request: Request):
+    _require(request)
+    result = updater.apply()
+    status = 200 if result.get("ok") else 400
+    return JSONResponse(result, status_code=status)
 
 
 @app.get("/healthz")

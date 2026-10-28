@@ -413,6 +413,57 @@ async function loadCrash() {
   }
 }
 
+// ---- Tabs ----------------------------------------------------------------
+function showView(name) {
+  document.getElementById("view-main").classList.toggle("view-hidden", name !== "main");
+  document.getElementById("view-maintenance").classList.toggle("view-hidden", name !== "maintenance");
+  document.querySelectorAll(".navtab").forEach(t =>
+    t.classList.toggle("active", t.dataset.view === name));
+}
+
+// ---- Panel update --------------------------------------------------------
+async function checkUpdate() {
+  const el = document.getElementById("updStatus");
+  const btn = document.getElementById("updBtn");
+  el.textContent = "checking…";
+  try {
+    const r = await fetch("/api/update/check");
+    const d = await r.json();
+    if (!d.git) { el.textContent = "Not a git install — update from the host."; btn.disabled = true; return; }
+    if (d.error) { el.textContent = "Check failed: " + d.error; btn.disabled = true; return; }
+    if (d.update_available) {
+      el.textContent = `Update available (${d.behind} commit(s)): ${d.latest_subject}`;
+      btn.disabled = false;
+      document.getElementById("updBadge").style.display = "";
+    } else {
+      el.textContent = `Up to date (${d.current}).`;
+      btn.disabled = true;
+      document.getElementById("updBadge").style.display = "none";
+    }
+  } catch (e) { el.textContent = "Check failed."; }
+}
+async function applyUpdate() {
+  if (!confirm("Update the panel and restart it now? Brief downtime (~5s).")) return;
+  const d = await post("/api/update/apply", new FormData());
+  if (d) {
+    document.getElementById("updStatus").textContent = "Updating… panel restarting, reloading in 8s.";
+    setTimeout(() => location.reload(), 8000);
+  }
+}
+
+// ---- Danger zone ---------------------------------------------------------
+async function resetWorld() {
+  const ans = prompt('This DELETES the world (a backup is made first). Type "delete" to confirm:');
+  if (ans !== "delete") return;
+  const d = await post("/api/world/reset", new FormData());
+  if (d) { flash("World deleted — press Start for a fresh one."); loadBackups(); }
+}
+async function resetModpack() {
+  if (!confirm("Remove the modpack (mods/loader/config)? Your world is kept and a backup is made.")) return;
+  const d = await post("/api/modpack/reset", new FormData());
+  if (d) { flash("Modpack removed — install a new one."); loadBackups(); }
+}
+
 // ---- Live map ------------------------------------------------------------
 let mapSrc = "";
 function updateMap(enabled, port) {
@@ -491,6 +542,7 @@ loadFileList();
 loadSchedule();
 loadCrashList();
 loadPlaytime();
+checkUpdate();
 refresh();
 refreshStats();
 refreshOnline();

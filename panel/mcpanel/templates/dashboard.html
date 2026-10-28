@@ -12,11 +12,16 @@
 <body>
 <header>
   <h1>⛏️ MC Modpack Panel</h1>
+  <nav class="navtabs">
+    <button class="navtab active" data-view="main" onclick="showView('main')">Dashboard</button>
+    <button class="navtab" data-view="maintenance" onclick="showView('maintenance')">⚙ Wartung <span class="badge" id="updBadge" style="display:none">●</span></button>
+  </nav>
   <div class="status-pill" id="statusPill">●</div>
   <a class="logout" href="/logout">Log out</a>
 </header>
 
 <main>
+<div id="view-main">
   <!-- Server control -->
   <section class="card">
     <h2>Server</h2>
@@ -239,6 +244,47 @@
     <textarea id="props" class="props" spellcheck="false"></textarea>
     <button class="primary" onclick="saveProps()">Save properties</button>
   </section>
+</div><!-- /view-main -->
+
+<div id="view-maintenance" class="view-hidden">
+  <!-- Panel update -->
+  <section class="card">
+    <h2>Panel update</h2>
+    <p class="meta" id="updStatus">checking…</p>
+    <div class="btn-row">
+      <button onclick="checkUpdate()">Check for updates</button>
+      <button class="primary" id="updBtn" onclick="applyUpdate()" disabled>Update now</button>
+    </div>
+    <p class="hint">Updates the panel from GitHub and restarts it. Your world, mods and settings stay.</p>
+  </section>
+
+  <!-- One-click tools -->
+  <section class="card">
+    <h2>One-click tools</h2>
+    <div class="btn-row"><button class="primary" onclick="addBluemap()">Install live map (BlueMap)</button></div>
+    <div class="btn-row" style="margin-top:8px"><button onclick="addChunky()">Install Chunky (pre-gen)</button></div>
+    <p class="hint">Downloads the matching mod for your loader/MC version and adds it as an extra mod.</p>
+  </section>
+
+  <!-- Danger zone -->
+  <section class="card wide danger-zone">
+    <h2>⚠ Danger zone</h2>
+    <div class="dz-row">
+      <div>
+        <b>Delete world</b>
+        <p class="hint">Removes the world (a backup is made first). A fresh world generates on next Start.</p>
+      </div>
+      <button class="danger" onclick="resetWorld()">Delete world</button>
+    </div>
+    <div class="dz-row">
+      <div>
+        <b>Remove modpack</b>
+        <p class="hint">Clears mods, loader and config but keeps your world (backup made first).</p>
+      </div>
+      <button class="danger" onclick="resetModpack()">Remove modpack</button>
+    </div>
+  </section>
+</div><!-- /view-maintenance -->
 </main>
 
 <script src="/static/app.js"></script>
