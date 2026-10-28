@@ -49,9 +49,9 @@ header h1 { font-size: 18px; margin: 0; flex: 0 0 auto; }
 .status-pill.starting { color: #facc15; border-color: #facc15; }
 .status-pill.crashed, .status-pill.stopped { color: var(--muted); }
 
-main {
+main { padding: 20px; max-width: 1100px; margin: 0 auto; }
+#view-main, #view-maintenance {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
-  padding: 20px; max-width: 1100px; margin: 0 auto;
 }
 .card {
   background: var(--card); border: 1px solid var(--border);
@@ -145,6 +145,7 @@ select { width: 100%; padding: 9px 11px; background: var(--card2); border: 1px s
 .grid .full { grid-column: 1 / -1; }
 
 @media (max-width: 720px) {
-  main { grid-template-columns: 1fr; padding: 14px; }
+  main { padding: 14px; }
+  #view-main, #view-maintenance { grid-template-columns: 1fr; }
   .grid { grid-template-columns: 1fr; }
 }
