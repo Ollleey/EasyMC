@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MC Modpack Panel — Setup</title>
+  <meta name="theme-color" content="#0f1419">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="centered">
+  <form class="card setup" method="post" action="/setup">
+    <h1>⛏️ First-time setup</h1>
+    <p class="hint">Pick what you want to use. Everything here can be changed later under <b>Settings</b> — nothing is permanent.</p>
+
+    <h3>Basics</h3>
+    <div class="grid">
+      <label>RAM (MB)<input type="number" name="memory_mb" value="{{ settings.memory_mb }}" min="512" step="512"></label>
+      <label>Server port<input type="number" name="server_port" value="{{ settings.server_port }}"></label>
+    </div>
+    <label class="check"><input type="checkbox" name="eula_accepted" {{ 'checked' if settings.eula_accepted }}> I accept the <a href="https://aka.ms/MinecraftEULA" target="_blank">Minecraft EULA</a> (required to start the server)</label>
+
+    <h3>Features — tick what you want, untick the rest</h3>
+    <label class="check"><input type="checkbox" name="backup_enabled" checked> Automatic backups</label>
+    <label class="check"><input type="checkbox" name="use_rcon" checked> RCON (clean stat queries)</label>
+    <label class="check"><input type="checkbox" name="restart_enabled"> Daily scheduled restart</label>
+    <label class="check"><input type="checkbox" name="map_enabled"> Live map (needs a map mod like BlueMap)</label>
+    <label class="check"><input type="checkbox" name="discord_enabled" id="dc"> Discord notifications</label>
+    <label id="dcUrlWrap" style="display:none">Discord webhook URL<input type="text" name="discord_webhook_url" placeholder="https://discord.com/api/webhooks/..."></label>
+
+    <h3>Optional</h3>
+    <label>CurseForge API key <span class="hint">(only for CurseForge modpacks — can add later)</span><input type="text" name="curseforge_api_key" placeholder="leave blank if unused"></label>
+
+    <button class="primary" type="submit" style="margin-top:16px">Finish setup →</button>
+  </form>
+
+  <script>
+    // Reveal the webhook field only when Discord is ticked.
+    const dc = document.getElementById("dc");
+    const wrap = document.getElementById("dcUrlWrap");
+    const sync = () => { wrap.style.display = dc.checked ? "block" : "none"; };
+    dc.addEventListener("change", sync); sync();
+  </script>
+</body>
+</html>

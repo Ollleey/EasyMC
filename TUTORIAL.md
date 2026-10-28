@@ -72,7 +72,11 @@ Bevor du anfängst, brauchst du:
 2. Beim **ersten Besuch** erscheint „First run — choose a panel password".
    Tippe ein Passwort ein und klicke **„Set password & enter"**.
    Dieses Passwort gilt ab jetzt für jeden Login.
-3. Du landest auf dem **Dashboard**. Oben siehst du den Server-Status
+3. Danach kommt der **Erst-Setup-Assistent**: RAM und Port setzen, EULA
+   bestätigen und die gewünschten Funktionen **an- oder abwählen** (Backups,
+   RCON, Live-Map, Discord, geplanter Neustart). Alles ist optional und später
+   unter **Settings** änderbar. Mit **„Finish setup →"** geht's weiter.
+4. Du landest auf dem **Dashboard**. Oben siehst du den Server-Status
    (`● stopped`).
 
 ---

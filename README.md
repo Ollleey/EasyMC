@@ -51,9 +51,12 @@ Web UI:  http://192.168.1.50:8080
 Then:
 
 1. Open that URL and **set a panel password**.
-2. **Add a modpack** (Modrinth or CurseForge — link or file).
-3. Tick **I accept the Minecraft EULA** under Settings and press **Start**.
-4. Connect from Minecraft (same modpack on the client) — see
+2. Run the **first-time setup** — RAM, port, and tick/untick the features you
+   want (backups, RCON, live map, Discord, scheduled restart). Everything is
+   optional and changeable later under Settings.
+3. **Add a modpack** (Modrinth or CurseForge — link or file).
+4. Make sure the **EULA** is accepted and press **Start**.
+5. Connect from Minecraft (same modpack on the client) — see
    [docs/](docs/) and the full [TUTORIAL.md](TUTORIAL.md).
 
 ### Customise the container

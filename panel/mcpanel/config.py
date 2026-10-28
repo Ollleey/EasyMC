@@ -43,6 +43,7 @@ class Settings:
     panel_port: int = 8080
     panel_password: str = ""              # empty on first run -> set during setup
     session_secret: str = field(default_factory=lambda: secrets.token_hex(32))
+    setup_done: bool = False              # first-run wizard completed
 
     # --- backups ---
     backup_enabled: bool = True           # run automatic backups

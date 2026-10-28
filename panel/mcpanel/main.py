@@ -121,6 +121,8 @@ def logout(request: Request):
 def dashboard(request: Request):
     if not _authed(request):
         return RedirectResponse("/login", status_code=303)
+    if not _settings.setup_done:
+        return RedirectResponse("/setup", status_code=303)
     return templates.TemplateResponse(
         "dashboard.html",
         {
@@ -129,6 +131,51 @@ def dashboard(request: Request):
             "status": manager.status,
         },
     )
+
+
+# ==========================================================================
+# First-run setup wizard
+# ==========================================================================
+@app.get("/setup", response_class=HTMLResponse)
+def setup_page(request: Request):
+    if not _authed(request):
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(
+        "setup.html", {"request": request, "settings": _settings.public_dict()}
+    )
+
+
+@app.post("/setup")
+def setup_save(
+    request: Request,
+    memory_mb: int = Form(4096),
+    server_port: int = Form(25565),
+    eula_accepted: bool = Form(False),
+    backup_enabled: bool = Form(False),
+    use_rcon: bool = Form(False),
+    map_enabled: bool = Form(False),
+    discord_enabled: bool = Form(False),
+    discord_webhook_url: str = Form(""),
+    restart_enabled: bool = Form(False),
+    curseforge_api_key: str = Form(""),
+):
+    if not _authed(request):
+        return RedirectResponse("/login", status_code=303)
+    _settings.memory_mb = max(512, memory_mb)
+    _settings.server_port = server_port
+    _settings.eula_accepted = eula_accepted
+    _settings.backup_enabled = backup_enabled
+    _settings.use_rcon = use_rcon
+    _settings.map_enabled = map_enabled
+    _settings.discord_enabled = discord_enabled
+    if discord_webhook_url.strip():
+        _settings.discord_webhook_url = discord_webhook_url.strip()
+    _settings.restart_enabled = restart_enabled
+    if curseforge_api_key.strip():
+        _settings.curseforge_api_key = curseforge_api_key.strip()
+    _settings.setup_done = True
+    config.save(_settings)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.get("/api/status")

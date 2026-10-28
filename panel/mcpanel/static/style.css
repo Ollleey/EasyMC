@@ -49,6 +49,10 @@ main {
 .card h2 { margin: 0 0 12px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .login { width: 100%; max-width: 360px; }
 .login h1 { margin-top: 0; }
+.setup { width: 100%; max-width: 520px; margin: 24px auto; }
+.setup h1 { margin-top: 0; }
+.setup h3 { margin: 18px 0 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+body.centered { align-items: flex-start; }
 
 label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
 input, textarea, select {
