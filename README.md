@@ -1,2 +1,2 @@
 # EasyMC
-Easy Mdopack and server isntaller for Proxmox
+Easy Mdopack and server installer for Proxmox
