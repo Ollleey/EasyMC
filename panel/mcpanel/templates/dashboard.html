@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MC Modpack Panel</title>
+  <meta name="theme-color" content="#0f1419">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>⛏️ MC Modpack Panel</h1>
+  <div class="status-pill" id="statusPill">●</div>
+  <a class="logout" href="/logout">Log out</a>
+</header>
+
+<main>
+  <!-- Server control -->
+  <section class="card">
+    <h2>Server</h2>
+    <p class="meta" id="packMeta">—</p>
+    <div class="tiles">
+      <div class="tile"><span class="tval" id="tileRam">—</span><span class="tlabel">RAM</span></div>
+      <div class="tile"><span class="tval" id="tileCpu">—</span><span class="tlabel">CPU</span></div>
+      <div class="tile"><span class="tval" id="tileUptime">—</span><span class="tlabel">Uptime</span></div>
+      <div class="tile"><span class="tval" id="tilePlayers">—</span><span class="tlabel">Players</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="primary" onclick="control('start')">Start</button>
+      <button onclick="control('restart')">Restart</button>
+      <button class="danger" onclick="control('stop')">Stop</button>
+    </div>
+  </section>
+
+  <!-- Install modpack -->
+  <section class="card">
+    <h2>Install a modpack</h2>
+    <div class="tabs">
+      <button class="tab active" data-src="modrinth" onclick="pickSource('modrinth')">Modrinth</button>
+      <button class="tab" data-src="curseforge" onclick="pickSource('curseforge')">CurseForge</button>
+    </div>
+
+    <label>Link or ID
+      <input type="text" id="packLink" placeholder="https://modrinth.com/modpack/... or project id">
+    </label>
+    <button class="primary" onclick="installLink()">Install from link/ID</button>
+
+    <p class="or">— or upload a file —</p>
+    <label>Pack file (<span id="uploadExt">.mrpack</span>)
+      <input type="file" id="packFile">
+    </label>
+    <button onclick="installUpload()">Install from file</button>
+
+    <pre class="joblog" id="jobLog"></pre>
+  </section>
+
+  <!-- Live map -->
+  <section class="card wide" id="mapCard" style="display:none">
+    <h2>Live map <a id="mapOpen" class="maplink" target="_blank" rel="noopener">open in new tab ↗</a></h2>
+    <iframe id="mapFrame" class="mapframe" title="Live map"></iframe>
+    <p class="hint" id="mapHint"></p>
+  </section>
+
+  <!-- Extra mods -->
+  <section class="card">
+    <h2>Extra mods</h2>
+    <p class="hint">Eigene <code>.jar</code>-Mods. Bleiben bei einem Modpack-Update erhalten und werden automatisch wieder eingespielt. Muss zum Loader &amp; zur MC-Version passen und serverseitig laufen.</p>
+    <label>Add mod (.jar)<input type="file" id="modFile" accept=".jar"></label>
+    <button class="primary" onclick="uploadMod()">Upload mod</button>
+
+    <p class="or">— or search Modrinth —</p>
+    <div class="addrow">
+      <input type="text" id="modSearch" placeholder="search mods…" onkeydown="if(event.key==='Enter')searchMods()">
+      <button onclick="searchMods()">Search</button>
+    </div>
+    <ul class="modlist" id="searchResults"></ul>
+
+    <div class="btn-row"><button class="mini" onclick="addBluemap()">1-click BlueMap (live map)</button></div>
+
+    <h3 style="margin-top:14px">Installed extra mods</h3>
+    <ul class="modlist" id="modList"></ul>
+  </section>
+
+  <!-- Console -->
+  <section class="card wide">
+    <h2>Console</h2>
+    <pre class="console" id="console"></pre>
+    <div class="btn-row">
+      <input type="text" id="cmd" placeholder="Server command, e.g. say hello" onkeydown="if(event.key==='Enter')sendCmd()">
+      <button onclick="sendCmd()">Send</button>
+    </div>
+  </section>
+
+  <!-- Players -->
+  <section class="card">
+    <h2>Players</h2>
+    <div class="btn-row">
+      <label class="check" style="margin:0"><input type="checkbox" id="wlToggle" onchange="toggleWhitelist()"> Whitelist on</label>
+      <span class="meta" id="onlineNow" style="margin-left:auto">online: —</span>
+    </div>
+
+    <div class="playcol">
+      <h3>Whitelist</h3>
+      <ul class="plist" id="wlList"></ul>
+      <div class="addrow"><input type="text" id="wlName" placeholder="name"><button onclick="playerAdd('whitelist/add','wlName')">Add</button></div>
+    </div>
+    <div class="playcol">
+      <h3>Operators (admins)</h3>
+      <ul class="plist" id="opList"></ul>
+      <div class="addrow"><input type="text" id="opName" placeholder="name"><button onclick="playerAdd('ops/add','opName')">Op</button></div>
+    </div>
+    <div class="playcol">
+      <h3>Banned</h3>
+      <ul class="plist" id="banList"></ul>
+      <div class="addrow"><input type="text" id="banName" placeholder="name"><button class="danger" onclick="playerAdd('ban','banName')">Ban</button></div>
+    </div>
+    <p class="hint" id="playersHint"></p>
+  </section>
+
+  <!-- Backups -->
+  <section class="card">
+    <h2>Backups</h2>
+    <div class="btn-row">
+      <button class="primary" onclick="backupNow()">Backup now</button>
+      <span class="meta" id="backupState" style="margin-left:auto"></span>
+    </div>
+    <ul class="plist" id="backupList"></ul>
+  </section>
+
+  <!-- World & appearance -->
+  <section class="card">
+    <h2>World &amp; appearance</h2>
+    <button onclick="location.href='/api/world/download'">Download current world (.zip)</button>
+    <label style="margin-top:14px">Import world (.zip with level.dat)<input type="file" id="worldFile" accept=".zip"></label>
+    <button onclick="importWorld()">Import world</button>
+    <p class="hint">Import stops the server and replaces the current world. A safety backup is made first.</p>
+    <label style="margin-top:14px">Server icon (64×64 .png)<input type="file" id="iconFile" accept=".png"></label>
+    <button onclick="uploadIcon()">Upload icon</button>
+  </section>
+
+  <!-- Config files -->
+  <section class="card">
+    <h2>Config files</h2>
+    <div class="addrow">
+      <select id="fileSelect"></select>
+      <button onclick="loadFile()">Open</button>
+    </div>
+    <textarea id="fileText" class="props" spellcheck="false" placeholder="Select a config file and click Open"></textarea>
+    <button class="primary" onclick="saveFile()">Save file</button>
+  </section>
+
+  <!-- Playtime -->
+  <section class="card">
+    <h2>Playtime</h2>
+    <p class="hint">Accrues while the panel is running. A green dot = online now.</p>
+    <ul class="plist" id="playtimeList"></ul>
+  </section>
+
+  <!-- World pre-generation -->
+  <section class="card">
+    <h2>World pre-generation</h2>
+    <p class="hint">Generate chunks ahead of time (less lag when exploring). Needs the <b>Chunky</b> mod and a running server.</p>
+    <div class="btn-row"><button class="mini" onclick="addChunky()">1-click install Chunky</button></div>
+    <div class="addrow" style="margin-top:10px">
+      <input type="number" id="pregenRadius" value="1000" style="max-width:120px" title="radius in blocks">
+      <button class="primary" onclick="pregen('start')">Start pre-gen</button>
+      <button class="danger" onclick="pregen('cancel')">Cancel</button>
+    </div>
+    <p class="hint">Progress shows in the Console.</p>
+  </section>
+
+  <!-- Scheduled commands -->
+  <section class="card">
+    <h2>Scheduled commands</h2>
+    <p class="hint">Run a console command daily at a set time (e.g. <code>save-all</code>, <code>say Good night</code>). Needs the server running.</p>
+    <ul class="plist" id="scheduleList"></ul>
+    <div class="addrow">
+      <input type="text" id="schedTime" placeholder="HH:MM" style="max-width:90px">
+      <input type="text" id="schedCmd" placeholder="command (no slash)">
+      <button onclick="addSchedule()">Add</button>
+    </div>
+  </section>
+
+  <!-- Tunnel -->
+  <section class="card">
+    <h2>Tunnel (playit.gg)</h2>
+    <p class="hint">Let friends join without port forwarding. Start it, open the claim URL shown, then create a tunnel to 127.0.0.1:<span id="tunPort">{{ settings.server_port }}</span> on playit.gg. See docs/tunnel.md.</p>
+    <div class="btn-row">
+      <button class="primary" onclick="tunnelCtl('start')">Start tunnel</button>
+      <button class="danger" onclick="tunnelCtl('stop')">Stop</button>
+      <span class="meta" id="tunState" style="margin-left:auto">stopped</span>
+    </div>
+    <pre class="joblog" id="tunnelLog" style="height:140px"></pre>
+  </section>
+
+  <!-- Crash reports -->
+  <section class="card wide">
+    <h2>Crash reports &amp; logs</h2>
+    <div class="addrow">
+      <select id="crashSelect"></select>
+      <button onclick="loadCrash()">View</button>
+    </div>
+    <pre class="console" id="crashText" style="height:260px"></pre>
+  </section>
+
+  <!-- Settings -->
+  <section class="card wide">
+    <h2>Settings</h2>
+    <form id="settingsForm" onsubmit="saveSettings(event)">
+      <div class="grid">
+        <label>RAM (MB)<input type="number" name="memory_mb" value="{{ settings.memory_mb }}" min="512" step="512"></label>
+        <label>Server port<input type="number" name="server_port" value="{{ settings.server_port }}"></label>
+        <label class="full">Extra JVM args <button type="button" class="mini" onclick="applyAikar()">use Aikar flags</button><input type="text" name="extra_jvm_args" id="jvmArgs" value="{{ settings.extra_jvm_args }}"></label>
+        <label>Daily restart time (HH:MM)<input type="text" name="restart_time" value="{{ settings.restart_time }}" placeholder="04:00"></label>
+        <label>Restart warning (minutes)<input type="number" name="restart_warn_minutes" value="{{ settings.restart_warn_minutes }}" min="0"></label>
+        <label class="full">Discord webhook URL<input type="text" name="discord_webhook_url" placeholder="{{ 'set ✓' if settings.discord_webhook_url else 'https://discord.com/api/webhooks/...' }}"></label>
+        <label class="full">CurseForge API key<input type="text" name="curseforge_api_key" placeholder="{{ 'set ✓' if settings.curseforge_api_key else 'not set' }}"></label>
+        <label class="full">New panel password (optional)<input type="password" name="new_password" placeholder="leave blank to keep"></label>
+        <label>Live map port<input type="number" name="map_port" value="{{ settings.map_port }}"></label>
+        <label>Auto-backup every (hours)<input type="number" name="backup_interval_hours" value="{{ settings.backup_interval_hours }}" min="1"></label>
+        <label>Keep last N backups<input type="number" name="backup_keep" value="{{ settings.backup_keep }}" min="1"></label>
+        <label class="check"><input type="checkbox" name="auto_restart" {{ 'checked' if settings.auto_restart }}> Auto-restart on crash</label>
+        <label class="check"><input type="checkbox" name="backup_enabled" {{ 'checked' if settings.backup_enabled }}> Automatic backups</label>
+        <label class="check"><input type="checkbox" name="map_enabled" {{ 'checked' if settings.map_enabled }}> Live map (needs a map mod, e.g. BlueMap)</label>
+        <label class="check"><input type="checkbox" name="restart_enabled" {{ 'checked' if settings.restart_enabled }}> Daily scheduled restart</label>
+        <label class="check"><input type="checkbox" name="discord_enabled" {{ 'checked' if settings.discord_enabled }}> Discord notifications</label>
+        <label class="check"><input type="checkbox" name="use_rcon" {{ 'checked' if settings.use_rcon }}> Use RCON for clean stat queries</label>
+        <label class="check"><input type="checkbox" name="eula_accepted" {{ 'checked' if settings.eula_accepted }}> I accept the <a href="https://aka.ms/MinecraftEULA" target="_blank">Minecraft EULA</a></label>
+      </div>
+      <button class="primary" type="submit">Save settings</button>
+    </form>
+  </section>
+
+  <!-- server.properties -->
+  <section class="card wide">
+    <h2>server.properties</h2>
+    <textarea id="props" class="props" spellcheck="false"></textarea>
+    <button class="primary" onclick="saveProps()">Save properties</button>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

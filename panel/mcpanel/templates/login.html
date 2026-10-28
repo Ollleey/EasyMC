@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MC Modpack Panel — Login</title>
+  <meta name="theme-color" content="#0f1419">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="centered">
+  <form class="card login" method="post" action="/login">
+    <h1>⛏️ MC Modpack Panel</h1>
+    {% if needs_setup %}
+      <p class="hint">First run — choose a panel password. It will be saved for next time.</p>
+    {% else %}
+      <p class="hint">Enter the panel password.</p>
+    {% endif %}
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <input type="password" name="password" placeholder="Password" autofocus required>
+    <button type="submit">{{ "Set password & enter" if needs_setup else "Log in" }}</button>
+  </form>
+</body>
+</html>

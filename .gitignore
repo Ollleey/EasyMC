@@ -1,0 +1,9 @@
+# Python
+panel/.venv/
+__pycache__/
+*.pyc
+
+# runtime data (never commit worlds, mods, secrets)
+mc-modpack-data/
+*.mrpack
+*.log

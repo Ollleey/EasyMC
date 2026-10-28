@@ -1,0 +1,19 @@
+[Unit]
+Description=MC Modpack Panel (web UI for a modded Minecraft server)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@APP_DIR@/panel
+Environment=MCPANEL_DATA=@DATA_DIR@
+# Minecraft downloads trust the system CA store; nothing extra needed.
+ExecStart=@APP_DIR@/panel/.venv/bin/uvicorn mcpanel.main:app --host 0.0.0.0 --port @PORT@
+Restart=always
+RestartSec=5
+# The panel itself spawns the Java server, so give the unit room.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
