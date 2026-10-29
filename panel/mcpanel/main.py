@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import secrets
 import threading
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
@@ -68,8 +69,56 @@ def _reset_job() -> None:
 
 
 # ---- auth helpers ---------------------------------------------------------
-def _hash_pw(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+_PBKDF2_ITERS = 200_000
+
+
+def _hash_pw(password: str, salt: str | None = None) -> str:
+    """Salted PBKDF2-HMAC-SHA256, stored as ``pbkdf2$iters$salt$hash``."""
+    salt = salt or secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), _PBKDF2_ITERS)
+    return f"pbkdf2${_PBKDF2_ITERS}${salt}${dk.hex()}"
+
+
+def _verify_pw(password: str, stored: str) -> tuple[bool, str | None]:
+    """Return (ok, upgraded_hash). upgraded_hash is set when a legacy
+    unsalted SHA-256 password verified and should be re-stored as PBKDF2."""
+    if not stored:
+        return False, None
+    if stored.startswith("pbkdf2$"):
+        try:
+            _, iters, salt, h = stored.split("$")
+            dk = hashlib.pbkdf2_hmac(
+                "sha256", password.encode(), bytes.fromhex(salt), int(iters)
+            )
+            return hmac.compare_digest(dk.hex(), h), None
+        except (ValueError, TypeError):
+            return False, None
+    # Legacy: unsalted SHA-256 hex -> verify and upgrade on success.
+    legacy = hashlib.sha256(password.encode()).hexdigest()
+    if hmac.compare_digest(stored, legacy):
+        return True, _hash_pw(password)
+    return False, None
+
+
+# Simple per-IP login throttle to blunt brute-force attempts.
+_login_fails: dict[str, list[float]] = {}
+_LOCK_THRESHOLD = 5       # failures within the window before locking
+_LOCK_WINDOW = 300.0      # seconds a failure is remembered
+_LOCK_TIME = 60.0         # seconds locked out once the threshold is hit
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _login_locked(ip: str) -> float:
+    """Seconds of lockout remaining for this IP (0 if not locked)."""
+    now = time.time()
+    fails = [t for t in _login_fails.get(ip, []) if now - t < _LOCK_WINDOW]
+    _login_fails[ip] = fails
+    if len(fails) >= _LOCK_THRESHOLD:
+        return max(0.0, fails[-1] + _LOCK_TIME - now)
+    return 0.0
 
 
 def _authed(request: Request) -> bool:
@@ -94,13 +143,31 @@ def login_page(request: Request):
 
 @app.post("/login")
 def login(request: Request, password: str = Form(...)):
+    ip = _client_ip(request)
+    locked = _login_locked(ip)
+    if locked > 0:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "needs_setup": False,
+             "error": f"Too many attempts. Try again in {int(locked) + 1}s."},
+            status_code=429,
+        )
+
     if not _settings.panel_password:
         # First run: the typed password becomes the panel password.
         _settings.panel_password = _hash_pw(password)
         config.save(_settings)
-    if hmac.compare_digest(_settings.panel_password, _hash_pw(password)):
+
+    ok, upgraded = _verify_pw(password, _settings.panel_password)
+    if ok:
+        if upgraded:                       # migrate a legacy hash in place
+            _settings.panel_password = upgraded
+            config.save(_settings)
+        _login_fails.pop(ip, None)
         request.session["auth"] = secrets.token_hex(8)
         return RedirectResponse("/", status_code=303)
+
+    _login_fails.setdefault(ip, []).append(time.time())
     return templates.TemplateResponse(
         "login.html",
         {"request": request, "needs_setup": False, "error": "Wrong password."},

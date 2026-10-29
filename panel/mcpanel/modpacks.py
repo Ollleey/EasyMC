@@ -45,6 +45,19 @@ def _client() -> httpx.Client:
     )
 
 
+def _safe_target(server_dir: Path, rel: str) -> Path | None:
+    """Join ``rel`` under ``server_dir`` but reject path traversal (Zip Slip).
+
+    Returns the resolved path, or None if the entry would escape the server
+    directory (absolute path, ``..``, symlink tricks). Callers skip None.
+    """
+    base = server_dir.resolve()
+    target = (base / rel).resolve()
+    if target == base or base in target.parents:
+        return target
+    return None
+
+
 def _clean_server_dir(server_dir: Path) -> None:
     """Remove previous mod set but keep worlds and panel-managed files."""
     keep = {"world", "world_nether", "world_the_end", "server.properties",
@@ -72,7 +85,9 @@ def _extract_overrides(zf: zipfile.ZipFile, server_dir: Path) -> None:
             if not name.startswith(prefix) or name.endswith("/"):
                 continue
             rel = name[len(prefix):]
-            target = server_dir / rel
+            target = _safe_target(server_dir, rel)
+            if target is None:
+                continue        # skip entries that try to escape (Zip Slip)
             target.parent.mkdir(parents=True, exist_ok=True)
             with zf.open(name) as src, target.open("wb") as dst:
                 shutil.copyfileobj(src, dst)
@@ -218,7 +233,10 @@ def install_mrpack(mrpack_path: Path, server_dir: Path) -> InstallResult:
                 env = entry.get("env", {})
                 if env.get("server") == "unsupported":
                     continue
-                target = server_dir / entry["path"]
+                target = _safe_target(server_dir, entry["path"])
+                if target is None:
+                    result.warnings.append(f"Skipped unsafe path: {entry['path']}")
+                    continue
                 urls = entry.get("downloads", [])
                 if not urls:
                     result.warnings.append(f"No download URL for {entry['path']}")
@@ -322,8 +340,12 @@ def install_curseforge_zip(
                         f"{CURSEFORGE_API}/mods/{project_id}/files/{file_id}"
                     ).json()["data"]
                     name = finfo["fileName"]
+                    target = _safe_target(server_dir, f"mods/{name}")
+                    if target is None:
+                        result.warnings.append(f"Skipped unsafe mod name: {name}")
+                        continue
                     url = finfo.get("downloadUrl") or _cf_edge_url(file_id, name)
-                    _download_to(client, url, server_dir / "mods" / name)
+                    _download_to(client, url, target)
                     result.files_installed += 1
                 except httpx.HTTPError:
                     # Many CF authors disable third-party downloads; tell the user.
@@ -337,7 +359,9 @@ def install_curseforge_zip(
             if not name.startswith(f"{override_dir}/") or name.endswith("/"):
                 continue
             rel = name[len(override_dir) + 1:]
-            target = server_dir / rel
+            target = _safe_target(server_dir, rel)
+            if target is None:
+                continue        # skip entries that try to escape (Zip Slip)
             target.parent.mkdir(parents=True, exist_ok=True)
             with zf.open(name) as src, target.open("wb") as dst:
                 shutil.copyfileobj(src, dst)

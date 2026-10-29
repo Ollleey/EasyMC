@@ -30,14 +30,23 @@ def installed() -> dict[int, str]:
 
 
 def required_for_mc(mc_version: str) -> int:
-    """Best-effort Java major for a Minecraft version (a first guess)."""
+    """Best-effort Java major for a Minecraft version (a first guess).
+
+    The classic ``1.x.y`` scheme maps to a known Java version. Anything that
+    doesn't parse as ``1.x`` (snapshots, odd pack metadata like ``26.2``, a
+    future numbering) biases to the newest Java, since old packs always use
+    clean ``1.x`` strings. Either way the launch-time auto-detection corrects
+    a wrong guess from the reported class-file version.
+    """
     try:
         parts = [int(x) for x in mc_version.split(".")[:3]]
     except (ValueError, AttributeError):
-        return 21
+        return 25
     while len(parts) < 3:
         parts.append(0)
-    _, minor, patch = parts[0], parts[1], parts[2]
+    major, minor, patch = parts[0], parts[1], parts[2]
+    if major != 1:
+        return 25                      # non-standard / newer scheme -> newest
     if minor <= 16:
         return 8
     if minor <= 19:
@@ -46,7 +55,7 @@ def required_for_mc(mc_version: str) -> int:
         return 21 if patch >= 5 else 17  # 1.20.5+ needs 21
     if minor == 21:
         return 21
-    return 25                          # 1.22+ / newest -> assume Java 25
+    return 25                          # 1.22+ -> assume Java 25
 
 
 def pick(desired_major: int, avail: dict[int, str] | None = None) -> tuple[str, bool]:
