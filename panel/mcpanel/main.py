@@ -31,6 +31,10 @@ app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 _settings = config.load()
 app.add_middleware(SessionMiddleware, secret_key=_settings.session_secret)
 
+# Cache-busting token for static assets: the git sha changes on every update,
+# so browsers (and the PWA cache) fetch the new app.js/style.css after a pull.
+ASSET_VER = updater.current_sha() or str(int(time.time()))
+
 # Auto-backup runs in the background using the live settings object.
 _autobackup = backups.AutoBackup(lambda: _settings)
 _autobackup.start()
@@ -137,7 +141,7 @@ def _require(request: Request) -> None:
 def login_page(request: Request):
     needs_setup = not _settings.panel_password
     return templates.TemplateResponse(
-        "login.html", {"request": request, "needs_setup": needs_setup}
+        "login.html", {"request": request, "needs_setup": needs_setup, "asset_ver": ASSET_VER}
     )
 
 
@@ -148,7 +152,7 @@ def login(request: Request, password: str = Form(...)):
     if locked > 0:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "needs_setup": False,
+            {"request": request, "needs_setup": False, "asset_ver": ASSET_VER,
              "error": f"Too many attempts. Try again in {int(locked) + 1}s."},
             status_code=429,
         )
@@ -170,7 +174,7 @@ def login(request: Request, password: str = Form(...)):
     _login_fails.setdefault(ip, []).append(time.time())
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, "needs_setup": False, "error": "Wrong password."},
+        {"request": request, "needs_setup": False, "asset_ver": ASSET_VER, "error": "Wrong password."},
         status_code=401,
     )
 
@@ -196,6 +200,7 @@ def dashboard(request: Request):
             "request": request,
             "settings": _settings.public_dict(),
             "status": manager.status,
+            "asset_ver": ASSET_VER,
         },
     )
 
@@ -208,7 +213,7 @@ def setup_page(request: Request):
     if not _authed(request):
         return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse(
-        "setup.html", {"request": request, "settings": _settings.public_dict()}
+        "setup.html", {"request": request, "settings": _settings.public_dict(), "asset_ver": ASSET_VER}
     )
 
 

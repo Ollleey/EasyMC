@@ -20,6 +20,18 @@ def is_git() -> bool:
     return (REPO_ROOT / ".git").exists()
 
 
+def current_sha() -> str:
+    """Short HEAD sha, used as a cache-busting token for static assets."""
+    if not is_git():
+        return ""
+    r = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "-c", f"safe.directory={REPO_ROOT}",
+         "rev-parse", "--short", "HEAD"],
+        capture_output=True, text=True,
+    )
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
 def _git(*args: str, timeout: int = 60) -> subprocess.CompletedProcess:
     # -c safe.directory avoids "dubious ownership" when the checkout was
     # touched as another user (e.g. a manual root `git pull`).
