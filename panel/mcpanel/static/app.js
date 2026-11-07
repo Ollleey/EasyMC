@@ -596,8 +596,16 @@ async function refreshOnline() {
 }
 
 // Register the service worker so the panel is installable as a PWA.
+// When a new worker takes control (after an update), reload once so the page
+// runs the fresh assets instead of whatever the old worker was serving.
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
+  let _swReloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (_swReloaded) return;
+    _swReloaded = true;
+    location.reload();
+  });
 }
 
 loadProps();
