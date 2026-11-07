@@ -147,9 +147,10 @@
 
   <!-- Config files -->
   <section class="card">
-    <h2>Config files</h2>
+    <h2>Config files <span class="meta" id="fileCount"></span></h2>
+    <input type="text" id="fileFilter" placeholder="filter… (e.g. parties, chunky)" oninput="renderFileList()" style="margin-bottom:8px">
     <div class="addrow">
-      <select id="fileSelect"></select>
+      <select id="fileSelect" size="6"></select>
       <button onclick="loadFile()">Open</button>
     </div>
     <textarea id="fileText" class="props" spellcheck="false" placeholder="Select a config file and click Open"></textarea>

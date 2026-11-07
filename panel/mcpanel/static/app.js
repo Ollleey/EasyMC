@@ -272,15 +272,24 @@ async function uploadIcon() {
 }
 
 // ---- Config files --------------------------------------------------------
+let _allFiles = [];
 async function loadFileList() {
   try {
     const r = await fetch("/api/files");
     if (!r.ok) return;
-    const d = await r.json();
-    const sel = document.getElementById("fileSelect");
-    sel.innerHTML = d.files.map(f => `<option value="${f}">${f}</option>`).join("")
-      || '<option value="">(no config files yet)</option>';
+    _allFiles = (await r.json()).files;
+    renderFileList();
   } catch (e) {}
+}
+function renderFileList() {
+  const q = (document.getElementById("fileFilter").value || "").toLowerCase();
+  const rows = _allFiles.filter(f => f.toLowerCase().includes(q));
+  const sel = document.getElementById("fileSelect");
+  sel.innerHTML = rows.length
+    ? rows.map(f => `<option value="${f}">${f}</option>`).join("")
+    : '<option value="">(no match)</option>';
+  document.getElementById("fileCount").textContent =
+    `(${rows.length}${rows.length !== _allFiles.length ? " of " + _allFiles.length : ""})`;
 }
 async function loadFile() {
   const path = document.getElementById("fileSelect").value;
