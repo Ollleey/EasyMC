@@ -375,6 +375,13 @@ async function deleteSchedule(i) {
 }
 
 // ---- Tunnel --------------------------------------------------------------
+async function saveTunnelSecret() {
+  const el = document.getElementById("playitSecret");
+  if (!el.value.trim()) { alert("Paste your playit secret key first."); return; }
+  const fd = new FormData(); fd.append("secret", el.value.trim());
+  const ok = await post("/api/tunnel/secret", fd);
+  if (ok) { el.value = ""; flash("Secret saved."); refreshTunnel(); }
+}
 async function tunnelCtl(action) {
   await post("/api/tunnel/" + action, new FormData());
   refreshTunnel();
@@ -384,7 +391,10 @@ async function refreshTunnel() {
     const r = await fetch("/api/tunnel");
     if (!r.ok) return;
     const d = await r.json();
-    document.getElementById("tunState").textContent = d.running ? "running" : "stopped";
+    document.getElementById("tunState").textContent =
+      (d.running ? "running" : "stopped") + (d.has_secret ? " · key set" : " · no key");
+    document.getElementById("playitSecret").placeholder =
+      d.has_secret ? "key saved ✓ (paste to replace)" : "playit secret key";
     const el = document.getElementById("tunnelLog");
     el.textContent = d.output;
     el.scrollTop = el.scrollHeight;

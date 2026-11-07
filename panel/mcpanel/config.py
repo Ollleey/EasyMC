@@ -66,6 +66,9 @@ class Settings:
     discord_enabled: bool = False
     discord_webhook_url: str = ""         # Discord channel webhook URL
 
+    # --- playit tunnel ---
+    playit_secret: str = ""               # playit.gg agent secret key (headless)
+
     # --- rcon (used for clean stat/command queries) ---
     use_rcon: bool = True
     rcon_port: int = 25575
@@ -92,6 +95,7 @@ class Settings:
         data["discord_webhook_url"] = (
             "" if not self.discord_webhook_url else "set ✓"
         )
+        data["playit_secret"] = "set ✓" if self.playit_secret else ""
         return data
 
 

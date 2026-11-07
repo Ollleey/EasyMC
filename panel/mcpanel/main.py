@@ -815,7 +815,17 @@ def api_schedule_delete(request: Request, index: int = Form(...)):
 @app.get("/api/tunnel")
 def api_tunnel(request: Request):
     _require(request)
-    return {"running": tunnel.is_running(), "output": tunnel.output()}
+    return {"running": tunnel.is_running(), "output": tunnel.output(),
+            "has_secret": bool(_settings.playit_secret)}
+
+
+@app.post("/api/tunnel/secret")
+def api_tunnel_secret(request: Request, secret: str = Form(...)):
+    _require(request)
+    if secret.strip() and secret.strip() != "set ✓":
+        _settings.playit_secret = secret.strip()
+        config.save(_settings)
+    return {"ok": True}
 
 
 @app.post("/api/tunnel/{action}")
@@ -823,7 +833,7 @@ def api_tunnel_control(request: Request, action: str):
     _require(request)
     try:
         if action == "start":
-            tunnel.start()
+            tunnel.start(_settings.playit_secret)
         elif action == "stop":
             tunnel.stop()
         else:

@@ -50,21 +50,35 @@ class Tunnel:
     def is_running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
 
-    def start(self) -> None:
+    def start(self, secret: str = "") -> None:
         if self.is_running():
             return
+        if not secret.strip():
+            self._append(
+                "[panel] No playit secret key set. Get one at https://playit.gg "
+                "(create an agent) and paste it in the Tunnel box, then Start."
+            )
+            raise RuntimeError("playit secret key required")
         binp = self._ensure_binary()
         self._append("[panel] Starting playit tunnel...")
-        # The daemon's default IPC socket path isn't writable by the service
-        # user, so point it at the data dir (which mcpanel owns). Stale socket
-        # from a previous run would also block the bind, so remove it first.
+
+        # This binary is the daemon only: it needs a secret key, not an
+        # interactive claim. Write the key to a private file and point the
+        # daemon at it, plus a writable IPC socket in the data dir.
+        secret_file = config.DATA_DIR / "playit-secret"
+        secret_file.write_text(secret.strip())
+        try:
+            secret_file.chmod(0o600)
+        except OSError:
+            pass
         sock = config.DATA_DIR / "playit.sock"
         try:
             sock.unlink()
         except OSError:
             pass
         self._proc = subprocess.Popen(
-            [str(binp), "--socket-path", str(sock)], cwd=str(config.DATA_DIR),
+            [str(binp), "--secret-path", str(secret_file), "--socket-path", str(sock)],
+            cwd=str(config.DATA_DIR),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
         )
         threading.Thread(target=self._pump, daemon=True).start()

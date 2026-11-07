@@ -220,7 +220,11 @@
   <!-- Tunnel -->
   <section class="card">
     <h2>Tunnel (playit.gg)</h2>
-    <p class="hint">Let friends join without port forwarding. Start it, open the claim URL shown, then create a tunnel to 127.0.0.1:<span id="tunPort">{{ settings.server_port }}</span> on playit.gg. See docs/tunnel.md.</p>
+    <p class="hint">Let friends join without port forwarding. Get an agent <b>secret key</b> at <a href="https://playit.gg" target="_blank">playit.gg</a>, paste it below, then Start. See docs/tunnel.md.</p>
+    <div class="addrow">
+      <input type="password" id="playitSecret" placeholder="playit secret key">
+      <button onclick="saveTunnelSecret()">Save key</button>
+    </div>
     <div class="btn-row">
       <button class="primary" onclick="tunnelCtl('start')">Start tunnel</button>
       <button class="danger" onclick="tunnelCtl('stop')">Stop</button>
