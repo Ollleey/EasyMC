@@ -69,6 +69,7 @@ async function loadMods() {
       `<button class="link" onclick="deleteMod('${m.name.replace(/'/g, "")}')">remove</button></li>`
     ).join("");
   } catch (e) {}
+  loadInstalledMods();   // keep the installed-mods list in sync
 }
 
 async function uploadMod() {
@@ -413,6 +414,52 @@ async function loadCrash() {
   }
 }
 
+// ---- New world -----------------------------------------------------------
+async function loadWorldSettings() {
+  try {
+    const r = await fetch("/api/world/settings");
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d["level-name"]) document.getElementById("worldName").value = d["level-name"];
+    if (d["level-seed"]) document.getElementById("worldSeed").value = d["level-seed"];
+    if (d["level-type"]) document.getElementById("worldType").value = d["level-type"];
+  } catch (e) {}
+}
+async function newWorld() {
+  const name = document.getElementById("worldName").value.trim() || "world";
+  if (!confirm(`Generate a new world "${name}"? The current world is backed up and replaced.`)) return;
+  const fd = new FormData();
+  fd.append("seed", document.getElementById("worldSeed").value.trim());
+  fd.append("level_name", name);
+  fd.append("level_type", document.getElementById("worldType").value);
+  const d = await post("/api/world/new", fd);
+  if (d) { flash("New world set up — press Start to generate."); loadBackups(); }
+}
+
+// ---- Installed mods ------------------------------------------------------
+let _installedMods = [];
+async function loadInstalledMods() {
+  try {
+    const r = await fetch("/api/mods/installed");
+    if (!r.ok) return;
+    const d = await r.json();
+    _installedMods = d.mods;
+    document.getElementById("modCount").textContent = `(${d.count})`;
+    renderInstalledMods();
+  } catch (e) {}
+}
+function renderInstalledMods() {
+  const q = (document.getElementById("modFilter").value || "").toLowerCase();
+  const ul = document.getElementById("installedMods");
+  const rows = _installedMods.filter(m => m.name.toLowerCase().includes(q));
+  ul.innerHTML = rows.length
+    ? rows.map(m =>
+        `<li><span class="dot ${m.extra ? 'on' : ''}" title="${m.extra ? 'added by you' : 'from the modpack'}"></span>` +
+        `${m.name}<span class="meta">${m.size_mb} MB</span></li>`
+      ).join("")
+    : '<li class="empty">no mods installed yet</li>';
+}
+
 // ---- Tabs ----------------------------------------------------------------
 function showView(name) {
   document.getElementById("view-main").classList.toggle("view-hidden", name !== "main");
@@ -542,6 +589,8 @@ loadFileList();
 loadSchedule();
 loadCrashList();
 loadPlaytime();
+loadWorldSettings();
+loadInstalledMods();
 checkUpdate();
 refresh();
 refreshStats();

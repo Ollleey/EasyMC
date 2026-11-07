@@ -176,6 +176,35 @@
     <p class="hint">Progress shows in the Console.</p>
   </section>
 
+  <!-- New world -->
+  <section class="card">
+    <h2>New world</h2>
+    <p class="hint">Generates a fresh world with the installed modpack. The current world is backed up and replaced.</p>
+    <div class="grid">
+      <label>Seed (optional)<input type="text" id="worldSeed" placeholder="leave blank = random"></label>
+      <label>World name<input type="text" id="worldName" value="world"></label>
+      <label class="full">World type
+        <select id="worldType">
+          <option value="">default</option>
+          <option value="largeBiomes">largeBiomes</option>
+          <option value="amplified">amplified</option>
+          <option value="flat">flat</option>
+        </select>
+      </label>
+    </div>
+    <button class="primary" onclick="newWorld()">Generate new world</button>
+  </section>
+
+  <!-- Installed mods -->
+  <section class="card wide">
+    <h2>Installed mods <span class="meta" id="modCount"></span></h2>
+    <div class="addrow">
+      <input type="text" id="modFilter" placeholder="filter…" oninput="renderInstalledMods()">
+      <button onclick="loadInstalledMods()">Refresh</button>
+    </div>
+    <ul class="modlist" id="installedMods"></ul>
+  </section>
+
   <!-- Scheduled commands -->
   <section class="card">
     <h2>Scheduled commands</h2>

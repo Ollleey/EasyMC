@@ -978,6 +978,80 @@ def api_update_apply(request: Request):
     return JSONResponse(result, status_code=status)
 
 
+# ==========================================================================
+# New world generation (seed, name, type)
+# ==========================================================================
+_LEVEL_TYPES = {"", "default", "flat", "largeBiomes", "amplified"}
+
+
+def _current_level_name() -> str:
+    for line in read_properties().splitlines():
+        if line.startswith("level-name="):
+            return line.split("=", 1)[1].strip() or "world"
+    return "world"
+
+
+@app.post("/api/world/new")
+def api_world_new(
+    request: Request,
+    seed: str = Form(""),
+    level_name: str = Form("world"),
+    level_type: str = Form(""),
+):
+    _require(request)
+    import re
+    import shutil
+    level_name = re.sub(r"[^A-Za-z0-9_\- ]", "", level_name).strip() or "world"
+    if level_type not in _LEVEL_TYPES:
+        return JSONResponse({"ok": False, "error": "Invalid level type"}, status_code=400)
+    try:
+        if manager.is_running():
+            manager.stop()
+        backups.create_backup(label="pre-new-world")
+        # Delete the dimension folders of both the current and the new name.
+        for base in {_current_level_name(), level_name, "world"}:
+            for suffix in ("", "_nether", "_the_end"):
+                shutil.rmtree(config.SERVER_DIR / f"{base}{suffix}", ignore_errors=True)
+        set_property("level-name", level_name)
+        set_property("level-seed", seed.strip())
+        if level_type:
+            set_property("level-type", level_type)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    return {"ok": True, "note": "New world set up (backup made). Press Start to generate it."}
+
+
+@app.get("/api/world/settings")
+def api_world_settings(request: Request):
+    _require(request)
+    props = {}
+    for line in read_properties().splitlines():
+        for key in ("level-name", "level-seed", "level-type"):
+            if line.startswith(key + "="):
+                props[key] = line.split("=", 1)[1]
+    return props
+
+
+# ==========================================================================
+# Installed mods (everything in the server's mods folder)
+# ==========================================================================
+@app.get("/api/mods/installed")
+def api_mods_installed(request: Request):
+    _require(request)
+    mods_dir = config.SERVER_DIR / "mods"
+    extra = {p.name for p in config.EXTRA_MODS_DIR.glob("*.jar")} \
+        if config.EXTRA_MODS_DIR.exists() else set()
+    mods = []
+    if mods_dir.exists():
+        for p in sorted(mods_dir.glob("*.jar"), key=lambda p: p.name.lower()):
+            mods.append({
+                "name": p.name,
+                "size_mb": round(p.stat().st_size / (1024 * 1024), 2),
+                "extra": p.name in extra,     # added by the user vs. from the pack
+            })
+    return {"mods": mods, "count": len(mods)}
+
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
