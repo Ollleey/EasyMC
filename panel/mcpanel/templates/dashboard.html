@@ -90,7 +90,7 @@
 
   <!-- Console -->
   <section class="card wide">
-    <h2>Console</h2>
+    <h2>Console <button type="button" class="mini" onclick="copyConsole()">copy all</button><button type="button" class="mini" onclick="location.href='/api/console/download'">download</button></h2>
     <pre class="console" id="console"></pre>
     <div class="btn-row">
       <input type="text" id="cmd" placeholder="Server command, e.g. say hello" onkeydown="if(event.key==='Enter')sendCmd()">
@@ -240,6 +240,7 @@
     <div class="addrow">
       <select id="crashSelect"></select>
       <button onclick="loadCrash()">View</button>
+      <button onclick="downloadCrash()">Download</button>
     </div>
     <pre class="console" id="crashText" style="height:260px"></pre>
   </section>

@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -1065,6 +1065,33 @@ def api_mods_installed(request: Request):
                 "extra": p.name in extra,     # added by the user vs. from the pack
             })
     return {"mods": mods, "count": len(mods)}
+
+
+# ==========================================================================
+# Log / crash-report downloads
+# ==========================================================================
+@app.get("/api/console/download")
+def api_console_download(request: Request):
+    _require(request)
+    return Response(
+        content=manager.console_text(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=console.txt"},
+    )
+
+
+@app.get("/api/logs/download")
+def api_logs_download(request: Request, path: str):
+    _require(request)
+    try:
+        target = files.safe_path(path)
+    except ValueError:
+        return JSONResponse({"ok": False, "error": "Invalid path"}, status_code=400)
+    if not target.is_file():
+        return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
+    return FileResponse(
+        str(target), filename=target.name, media_type="text/plain; charset=utf-8",
+    )
 
 
 @app.get("/healthz")

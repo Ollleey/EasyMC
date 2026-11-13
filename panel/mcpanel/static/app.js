@@ -432,6 +432,26 @@ async function loadCrash() {
     el.scrollTop = el.scrollHeight;
   }
 }
+function downloadCrash() {
+  const name = document.getElementById("crashSelect").value;
+  if (!name) { alert("Select a report first."); return; }
+  location.href = "/api/logs/download?path=" + encodeURIComponent(name);
+}
+
+// ---- Console copy ---------------------------------------------------------
+async function copyConsole() {
+  const text = document.getElementById("console").textContent || "";
+  try {
+    await navigator.clipboard.writeText(text);
+    flash("Console copied.");
+  } catch (e) {
+    // Fallback: select the console text so the user can Ctrl+C.
+    const r = document.createRange();
+    r.selectNodeContents(document.getElementById("console"));
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    alert("Press Ctrl+C to copy the selected console text.");
+  }
+}
 
 // ---- New world -----------------------------------------------------------
 async function loadWorldSettings() {

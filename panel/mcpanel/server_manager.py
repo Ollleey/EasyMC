@@ -21,7 +21,7 @@ from pathlib import Path
 
 from . import config, jvm, loaders, rcon
 
-_CONSOLE_LINES = 500
+_CONSOLE_LINES = 1000
 _JOIN_LEAVE = re.compile(r"\]:\s+(\w{1,16}) (joined|left) the game")
 _CLASS_VER = re.compile(r"class file version (\d+)")
 
